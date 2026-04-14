@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>G'day Mülheim 🦘</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    body { background: #111; color: #e0e0e0; display: flex; flex-direction: column; min-height: 100vh; }
+
+    #header { background: #1e1e1e; border-bottom: 1px solid #2a2a2a; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .htitle { font-size: 18px; font-weight: 600; color: #fff; }
+    .hsub { font-size: 12px; color: #777; margin-top: 2px; }
+    .db-status { font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+    .db-ok { background: #1a3a2a; color: #4caf7d; }
+    .db-err { background: #3a1a1a; color: #ef7070; }
+    .db-loading { background: #1a2a3a; color: #5aabef; }
+
+    #map { width: 100%; height: 60vh; min-height: 380px; }
+
+    #panel { background: #1e1e1e; flex: 1; padding: 1.25rem 1.5rem; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 1.25rem; }
+    .tab { font-size: 13px; padding: 6px 18px; border: 1px solid #555; border-radius: 20px; cursor: pointer; background: transparent; color: #aaa; transition: all 0.15s; }
+    .tab.active { background: #333; color: #fff; font-weight: 500; border-color: #666; }
+    .sec { display: none; }
+    .sec.active { display: block; }
+
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+    .stat { background: #2a2a2a; border-radius: 10px; padding: 12px; text-align: center; }
+    .sv { font-size: 24px; font-weight: 600; color: #fff; }
+    .sl { font-size: 11px; color: #777; margin-top: 3px; }
+
+    .tl { display: flex; flex-direction: column; }
+    .ti { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px solid #252525; align-items: flex-start; }
+    .ti:last-child { border-bottom: none; }
+    .dc { display: flex; flex-direction: column; align-items: center; min-width: 20px; padding-top: 4px; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    .dline { flex: 1; width: 1px; background: #333; margin-top: 4px; min-height: 18px; }
+    .tcontent { flex: 1; }
+    .tn { font-size: 14px; font-weight: 500; color: #fff; }
+    .td { font-size: 12px; color: #666; margin-top: 2px; }
+    .tnote { font-size: 13px; color: #888; margin-top: 4px; font-style: italic; }
+    .badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; margin-left: 6px; vertical-align: middle; }
+    .del-btn { background: transparent; border: none; color: #444; font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0; margin-top: 1px; transition: color 0.15s; }
+    .del-btn:hover { color: #ef7070; }
+    .empty-state { text-align: center; padding: 2.5rem; color: #555; font-size: 14px; }
+
+    /* Login prompt */
+    #login-prompt { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 2rem 0; }
+    .lp-icon { font-size: 32px; }
+    .lp-title { font-size: 14px; color: #aaa; text-align: center; }
+    .lp-row { display: flex; gap: 8px; align-items: center; }
+    .lp-input { padding: 9px 16px; background: #2a2a2a; border: 1px solid #444; border-radius: 10px; color: #fff; font-size: 15px; width: 170px; letter-spacing: 3px; text-align: center; }
+    .lp-input:focus { outline: none; border-color: #378ADD; }
+    .lp-btn { padding: 9px 20px; background: #378ADD; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .lp-err { font-size: 12px; color: #ef7070; display: none; }
+
+    /* Add form */
+    .form-section { display: flex; flex-direction: column; gap: 12px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-field { display: flex; flex-direction: column; gap: 5px; }
+    .form-field.full { grid-column: 1 / -1; }
+    .form-field label { font-size: 12px; color: #888; }
+    .form-field input { width: 100%; padding: 9px 12px; background: #2a2a2a; border: 1px solid #444; border-radius: 9px; color: #fff; font-size: 14px; }
+    .form-field input:focus { outline: none; border-color: #378ADD; }
+
+    .search-wrap { position: relative; grid-column: 1 / -1; }
+    .search-wrap input { width: 100%; padding: 9px 12px 9px 36px; background: #2a2a2a; border: 1px solid #444; border-radius: 9px; color: #fff; font-size: 14px; }
+    .search-wrap input:focus { outline: none; border-color: #378ADD; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; pointer-events: none; }
+    .search-results { position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: #252525; border: 1px solid #555; border-radius: 10px; z-index: 1000; overflow: hidden; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .search-result { padding: 10px 14px; font-size: 13px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; }
+    .search-result:last-child { border-bottom: none; }
+    .search-result:hover { background: #333; }
+    .sr-name { font-weight: 500; color: #fff; }
+    .sr-detail { font-size: 11px; color: #777; margin-top: 2px; }
+
+    .coords-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .coord-field { display: flex; flex-direction: column; gap: 5px; }
+    .coord-field label { font-size: 12px; color: #888; }
+    .coord-field input { width: 100%; padding: 9px 12px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 9px; color: #555; font-size: 12px; }
+    .coord-field input.filled { color: #5aabef; border-color: #1e3050; background: #141e2e; }
+
+    .hint-box { background: #141e2e; border: 1px solid #1e3050; border-radius: 9px; padding: 11px 14px; font-size: 12px; color: #5aabef; grid-column: 1 / -1; line-height: 1.7; }
+
+    .acts { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+    .acts-right { display: flex; gap: 8px; }
+    .btn { font-size: 13px; padding: 8px 20px; border-radius: 9px; cursor: pointer; font-weight: 500; }
+    .bp { background: #378ADD; color: #fff; border: none; }
+    .bp:hover { background: #2a7ac8; }
+    .bs { background: transparent; color: #aaa; border: 1px solid #555; }
+    .logout-link { font-size: 12px; color: #555; cursor: pointer; text-decoration: underline; }
+    .logout-link:hover { color: #aaa; }
+
+    /* Leaflet custom popup */
+    .leaflet-popup-content-wrapper { background: #1e1e1e; color: #e0e0e0; border: 1px solid #444; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+    .leaflet-popup-tip { background: #1e1e1e; }
+    .leaflet-popup-content { font-size: 13px; line-height: 1.6; }
+    .popup-title { font-weight: 600; font-size: 14px; color: #fff; }
+    .popup-date { color: #888; font-size: 12px; }
+    .popup-note { color: #aaa; font-style: italic; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <div class="htitle">🦘 G'day Mülheim</div>
+    <div class="hsub">AirTag · Melbourne → Mülheim an der Ruhr</div>
+  </div>
+  <span class="db-status db-loading" id="dbStatus">⏳ verbinde...</span>
+</div>
+
+<div id="map"></div>
+
+<div id="panel">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('tl')">Zeitstrahl</button>
+    <button class="tab" onclick="showTab('add')">+ Wegpunkt</button>
+  </div>
+
+  <div id="sec-tl" class="sec active">
+    <div class="stats" id="stats"></div>
+    <div class="tl" id="tl"></div>
+  </div>
+
+  <div id="sec-add" class="sec">
+    <div id="login-prompt">
+      <div class="lp-icon">🔐</div>
+      <div class="lp-title">Passwort eingeben um<br/>Wegpunkte hinzuzufügen</div>
+      <div class="lp-row">
+        <input class="lp-input" id="pwInput" type="password" placeholder="••••••" onkeydown="if(event.key==='Enter')checkPw()"/>
+        <button class="lp-btn" onclick="checkPw()">OK</button>
+      </div>
+      <div class="lp-err" id="pwErr">Falsches Passwort 🙈</div>
+    </div>
+
+    <div id="add-form" style="display:none;">
+      <div class="form-section">
+        <div class="form-row">
+          <div class="hint-box">💡 Screenshot aus „Wo ist?" an Claude schicken → Ortsnamen erhalten → hier suchen!</div>
+        </div>
+        <div class="form-row">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input id="fsearch" placeholder="Ort suchen, z.B. &quot;Singapur&quot; oder &quot;Hafen Hamburg&quot;" oninput="onSearch()" onkeydown="if(event.key==='Escape')closeSearch()"/>
+            <div class="search-results" id="searchResults"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>Ortsname</label><input id="fp" placeholder="Wird automatisch befüllt"/></div>
+          <div class="form-field"><label>Datum</label><input id="fd" type="date"/></div>
+        </div>
+        <div class="coords-row">
+          <div class="coord-field"><label>Breitengrad (auto)</label><input id="flat" type="number" step="0.001" readonly/></div>
+          <div class="coord-field"><label>Längengrad (auto)</label><input id="flon" type="number" step="0.001" readonly/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field full"><label>Notiz</label><input id="fn" placeholder="z.B. Im Hafen gesehen, Weiterfahrt morgen"/></div>
+        </div>
+        <div class="acts">
+          <span class="logout-link" onclick="lockForm()">🔒 abmelden</span>
+          <div class="acts-right">
+            <button class="btn bs" onclick="showTab('tl')">Abbrechen</button>
+            <button class="btn bp" onclick="addWP()">Speichern</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PASSWORD = 'pott';
+const SB_URL = 'https://nsxawxlcpzpeskmxeqwg.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeGF3eGxjcHpwZXNrbXhlcXdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTAxODgsImV4cCI6MjA5MTcyNjE4OH0.vkbdn2EXDNEAd03gWe6GmSTGM4SiLd2mFa_gVKLXBs0';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiamFub3BwIiwiYSI6ImNtbnlndGJ3MTAxdGEycW44OXFwc3c2ODQifQ.10686Wtpi3AO7hBY4V9n3Q';
+
+let wps = [];
+let map, routeLine, markers = [];
+let searchTimer = null;
+let authenticated = false;
+
+// Init map
+map = L.map('map', { zoomControl: true, scrollWheelZoom: true }).setView([20, 80], 3);
+L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=' + MAPBOX_TOKEN, {
+  attribution: '© <a href="https://www.mapbox.com/">Mapbox</a> © <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+  tileSize: 512,
+  zoomOffset: -1,
+  maxZoom: 18
+}).addTo(map);
+
+// Supabase
+async function sbFetch(path, opts={}) {
+  const res = await fetch(SB_URL + path, {
+    ...opts,
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': opts.prefer || '',
+      ...(opts.headers||{})
+    }
+  });
+  if(!res.ok) throw new Error(await res.text());
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function loadWaypoints() {
+  try {
+    const data = await sbFetch('/rest/v1/waypoints?select=*&order=date.asc');
+    wps = data.map(r => ({ id:r.id, place:r.place, lat:r.lat, lon:r.lon, date:r.date, note:r.note||'' }));
+    document.getElementById('dbStatus').className = 'db-status db-ok';
+    document.getElementById('dbStatus').textContent = '● live';
+    renderMap(); renderPanel();
+  } catch(e) {
+    document.getElementById('dbStatus').className = 'db-status db-err';
+    document.getElementById('dbStatus').textContent = '✕ DB-Fehler';
+    console.error(e);
+  }
+}
+
+function renderMap() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  if(routeLine) map.removeLayer(routeLine);
+
+  if(wps.length > 1) {
+    const coords = wps.map(w => [w.lat, w.lon]);
+    routeLine = L.polyline(coords, { color: '#ffffff', weight: 2, dashArray: '6 5', opacity: 0.7 }).addTo(map);
+    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+  }
+
+  wps.forEach((w, i) => {
+    const isFirst = i === 0, isLast = i === wps.length - 1;
+    const color = isFirst ? '#1D9E75' : isLast ? '#E24B4A' : '#5aabef';
+    const size = (isFirst || isLast) ? 14 : 11;
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.6)"></div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    });
+    const m = L.marker([w.lat, w.lon], { icon }).addTo(map);
+    m.bindPopup(`
+      <div class="popup-title">${w.place}</div>
+      <div class="popup-date">${new Date(w.date).toLocaleDateString('de-DE', {day:'2-digit', month:'long', year:'numeric'})}</div>
+      ${w.note ? `<div class="popup-note">${w.note}</div>` : ''}
+    `);
+    markers.push(m);
+  });
+}
+
+function renderPanel() {
+  function haversine(a,b) {
+    const R=6371, r=d=>d*Math.PI/180;
+    const dLa=r(b.lat-a.lat), dLo=r(b.lon-a.lon);
+    const x=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;
+    return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+  }
+  let km = 0;
+  for(let i=1;i<wps.length;i++) km += haversine(wps[i-1],wps[i]);
+  km = Math.round(km);
+  const days = wps.length < 2 ? 0 : Math.round((new Date(wps[wps.length-1].date)-new Date(wps[0].date))/86400000);
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="sv">${wps.length}</div><div class="sl">Wegpunkte</div></div>
+    <div class="stat"><div class="sv">${km.toLocaleString('de-DE')}</div><div class="sl">km</div></div>
+    <div class="stat"><div class="sv">${days}</div><div class="sl">Reisetage</div></div>`;
+
+  if(!wps.length) {
+    document.getElementById('tl').innerHTML = '<div class="empty-state">Noch keine Wegpunkte – füge den ersten hinzu!</div>';
+    return;
+  }
+
+  document.getElementById('tl').innerHTML = wps.slice().reverse().map((w, i, arr) => {
+    const origIdx = wps.indexOf(w);
+    const isFirst = origIdx === 0, isLast = origIdx === wps.length - 1;
+    const color = isFirst ? '#1D9E75' : isLast ? '#E24B4A' : '#5aabef';
+    const badge = isFirst
+      ? `<span class="badge" style="background:#1a3a2a;color:#4caf7d">Start</span>`
+      : isLast
+      ? `<span class="badge" style="background:#3a1a1a;color:#ef7070">Zuletzt gesehen</span>`
+      : `<span class="badge" style="background:#1a2a3a;color:#5aabef">Unterwegs</span>`;
+    return `<div class="ti">
+      <div class="dc">
+        <div class="dot" style="background:${color}"></div>
+        ${i < arr.length-1 ? '<div class="dline"></div>' : ''}
+      </div>
+      <div class="tcontent">
+        <div class="tn">${w.place}${badge}</div>
+        <div class="td">${new Date(w.date).toLocaleDateString('de-DE', {day:'2-digit', month:'long', year:'numeric'})}</div>
+        ${w.note ? `<div class="tnote">${w.note}</div>` : ''}
+      </div>
+      ${authenticated ? `<button class="del-btn" onclick="deleteWP('${w.id}',${origIdx})" title="Löschen">×</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function checkPw() {
+  if(document.getElementById('pwInput').value === PASSWORD) {
+    authenticated = true;
+    document.getElementById('login-prompt').style.display = 'none';
+    document.getElementById('add-form').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwErr').style.display = 'none';
+    renderPanel();
+  } else {
+    document.getElementById('pwErr').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+  }
+}
+
+function lockForm() {
+  authenticated = false;
+  document.getElementById('add-form').style.display = 'none';
+  document.getElementById('login-prompt').style.display = 'flex';
+  renderPanel();
+  showTab('tl');
+}
+
+function onSearch() {
+  clearTimeout(searchTimer);
+  const q = document.getElementById('fsearch').value.trim();
+  if(q.length < 2) { closeSearch(); return; }
+  searchTimer = setTimeout(() => doSearch(q), 400);
+}
+
+async function doSearch(q) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`, { headers: {'Accept-Language':'de'} });
+    showResults(await res.json());
+  } catch(e) { closeSearch(); }
+}
+
+function showResults(data) {
+  const el = document.getElementById('searchResults');
+  if(!data.length) { el.style.display = 'none'; return; }
+  el.innerHTML = data.map((r,i) => `
+    <div class="search-result" onclick="selectResult(${i})">
+      <div class="sr-name">${r.name || r.display_name.split(',')[0]}</div>
+      <div class="sr-detail">${r.display_name}</div>
+    </div>`).join('');
+  el.style.display = 'block';
+  el._data = data;
+}
+
+function selectResult(i) {
+  const r = document.getElementById('searchResults')._data[i];
+  const name = r.name || r.display_name.split(',')[0];
+  document.getElementById('fp').value = name;
+  document.getElementById('fsearch').value = name;
+  const latEl = document.getElementById('flat'), lonEl = document.getElementById('flon');
+  latEl.value = parseFloat(r.lat).toFixed(4);
+  lonEl.value = parseFloat(r.lon).toFixed(4);
+  latEl.classList.add('filled'); lonEl.classList.add('filled');
+  closeSearch();
+}
+
+function closeSearch() { document.getElementById('searchResults').style.display = 'none'; }
+document.addEventListener('click', e => { if(!e.target.closest('.search-wrap')) closeSearch(); });
+
+function showTab(n) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&n==='tl')||(i===1&&n==='add')));
+  document.getElementById('sec-tl').classList.toggle('active', n==='tl');
+  document.getElementById('sec-add').classList.toggle('active', n==='add');
+}
+
+async function addWP() {
+  const place = document.getElementById('fp').value.trim();
+  const date = document.getElementById('fd').value;
+  const lat = parseFloat(document.getElementById('flat').value);
+  const lon = parseFloat(document.getElementById('flon').value);
+  const note = document.getElementById('fn').value.trim();
+  if(!place||!date||isNaN(lat)||isNaN(lon)) { alert('Bitte erst einen Ort suchen und auswählen.'); return; }
+  try {
+    const saved = await sbFetch('/rest/v1/waypoints', { method:'POST', prefer:'return=representation', body: JSON.stringify({place,lat,lon,date,note}) });
+    wps.push({ id:saved[0].id, place, lat, lon, date, note });
+    wps.sort((a,b) => new Date(a.date)-new Date(b.date));
+    ['fp','fsearch','fn'].forEach(id => document.getElementById(id).value='');
+    ['flat','flon'].forEach(id => { document.getElementById(id).value=''; document.getElementById(id).classList.remove('filled'); });
+    renderMap(); renderPanel(); showTab('tl');
+  } catch(e) { alert('Fehler beim Speichern: ' + e.message); }
+}
+
+async function deleteWP(id, idx) {
+  if(!confirm(`"${wps[idx].place}" wirklich löschen?`)) return;
+  try {
+    await sbFetch(`/rest/v1/waypoints?id=eq.${id}`, { method:'DELETE' });
+    wps.splice(idx, 1);
+    renderMap(); renderPanel();
+  } catch(e) { alert('Fehler beim Löschen: ' + e.message); }
+}
+
+document.getElementById('fd').value = new Date().toISOString().slice(0,10);
+loadWaypoints();
+</script>
+</body>
+</html>
