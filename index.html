@@ -4,6 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>G'day Mülheim 🦘</title>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#f97316"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="G'day Mülheim"/>
+  <link rel="apple-touch-icon" href="/icon-192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -289,8 +295,7 @@
 <div id="mapwrap">
   <div id="map"></div>
   <div id="map-switcher">
-    <button class="ms-btn active" onclick="setStyle('satellite-v9', this)">🛰️ Satellite</button>
-    <button class="ms-btn" onclick="setStyle('satellite-streets-v12', this)">🛰️ Satellite+</button>
+    <button class="ms-btn active" onclick="setStyle('satellite-streets-v12', this)">🛰️ Satellite+</button>
     <button class="ms-btn" onclick="setStyle('dark-v11', this)">🌙 Dark</button>
     <button class="ms-btn" onclick="setStyle('streets-v12', this)">🗺️ Streets</button>
   </div>
@@ -298,8 +303,8 @@
 
 <div id="panel">
   <div class="tabs">
-    <button class="tab active" onclick="showTab('tl')">Zeitstrahl</button>
-    <button class="tab" onclick="showTab('add')">+ Wegpunkt</button>
+    <button class="tab active" id="tab-tl" onclick="showTab('tl')">Zeitstrahl</button>
+    <button class="tab" id="tab-add" onclick="showTab('add')">+ Wegpunkt</button>
   </div>
 
   <div id="sec-tl" class="sec active">
@@ -379,13 +384,17 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiamFub3BwIiwiYSI6ImNtbnlndGJ3MTAxdGEycW44OXFwc3c2ODQifQ.10686Wtpi3AO7hBY4V9n3Q';
 
 let wps = [], map, tileLayer, routeLine, markers = [];
-let searchTimer = null, authenticated = false, currentStyle = 'satellite-v9';
+let searchTimer = null, authenticated = false, currentStyle = 'satellite-streets-v12';
 let photoBase64 = null;
+const isAdmin = new URLSearchParams(window.location.search).get('admin') === '1';
+
+// Show/hide admin tab
+if(!isAdmin) document.getElementById('tab-add').style.display = 'none';
 
 // Map init
 map = L.map('map', { zoomControl: true, scrollWheelZoom: true }).setView([20, 80], 3);
 function getTileUrl(s) { return `https://api.mapbox.com/styles/v1/mapbox/${s}/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`; }
-tileLayer = L.tileLayer(getTileUrl('satellite-v9'), { attribution: '© Mapbox © OpenStreetMap', tileSize: 512, zoomOffset: -1, maxZoom: 18 }).addTo(map);
+tileLayer = L.tileLayer(getTileUrl('satellite-streets-v12'), { attribution: '© Mapbox © OpenStreetMap', tileSize: 512, zoomOffset: -1, maxZoom: 18 }).addTo(map);
 
 function setStyle(style, btn) {
   if(style === currentStyle) return;
@@ -486,7 +495,7 @@ function renderPanel() {
         ${w.note?`<div class="tnote">${w.note}</div>`:''}
         ${w.photo?`<div class="tphoto"><img src="${w.photo}" alt="Foto"/></div>`:''}
       </div>
-      ${authenticated?`<button class="del-btn" onclick="deleteWP('${w.id}',${origIdx})" title="Löschen">×</button>`:''}
+      ${authenticated?`<button class="del-btn" onclick="deleteWP('${w.id}')" title="Löschen">×</button>`:''}
     </div>`;
   }).join('');
 }
@@ -500,12 +509,12 @@ function previewPhoto(input) {
   reader.onload = e => {
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX = 800;
+      const MAX = 600;
       let w = img.width, h = img.height;
       if(w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      photoBase64 = canvas.toDataURL('image/jpeg', 0.6);
       document.getElementById('photo-preview-img').src = photoBase64;
       document.getElementById('photo-preview').style.display = 'block';
       document.querySelector('.photo-upload-area').style.display = 'none';
@@ -548,26 +557,30 @@ function selectResult(i){ const r=document.getElementById('searchResults')._data
 function closeSearch(){ document.getElementById('searchResults').style.display='none'; }
 document.addEventListener('click',e=>{ if(!e.target.closest('.search-wrap'))closeSearch(); });
 
-function showTab(n){ document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&n==='tl')||(i===1&&n==='add'))); document.getElementById('sec-tl').classList.toggle('active',n==='tl'); document.getElementById('sec-add').classList.toggle('active',n==='add'); }
+function showTab(n){
+  document.getElementById('tab-tl').classList.toggle('active', n==='tl');
+  document.getElementById('tab-add').classList.toggle('active', n==='add');
+  document.getElementById('sec-tl').classList.toggle('active', n==='tl');
+  document.getElementById('sec-add').classList.toggle('active', n==='add');
+}
 
 async function addWP(){
   const place=document.getElementById('fp').value.trim();
   const date=document.getElementById('fd').value;
   const lat=parseFloat(document.getElementById('flat').value);
   const lon=parseFloat(document.getElementById('flon').value);
-  const note=document.getElementById('fn').value.trim();
+  const note=document.getElementById('fn').value.trim() || null;
   const email=document.getElementById('femail').value.trim();
   if(!place||!date||isNaN(lat)||isNaN(lon)){alert('Bitte erst einen Ort suchen und auswählen.');return;}
   try{
     const payload={place,lat,lon,date,note};
     if(photoBase64) payload.photo=photoBase64;
     const saved=await sbFetch('/rest/v1/waypoints',{method:'POST',prefer:'return=representation',body:JSON.stringify(payload)});
-    wps.push({id:saved[0].id,place,lat,lon,date,note,photo:photoBase64||''});
+    wps.push({id:saved[0].id,place,lat,lon,date,note:note||'',photo:photoBase64||''});
     wps.sort((a,b)=>new Date(a.date)-new Date(b.date));
     ['fp','fsearch','fn','femail'].forEach(id=>document.getElementById(id).value='');
     ['flat','flon'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('filled');});
     clearPhoto();
-    // Email notification via mailto
     if(email){
       const subject=encodeURIComponent(`G'day Mülheim – Neuer Wegpunkt: ${place}`);
       const body=encodeURIComponent(`Der AirTag wurde gesehen!\n\nOrt: ${place}\nDatum: ${new Date(date).toLocaleDateString('de-DE')}\n${note?'Notiz: '+note+'\n':''}\nReise verfolgen: https://gday-muelheim.vercel.app`);
@@ -577,14 +590,25 @@ async function addWP(){
   }catch(e){alert('Fehler beim Speichern: '+e.message);}
 }
 
-async function deleteWP(id,idx){
+async function deleteWP(id){
+  const idx = wps.findIndex(w => w.id === id);
+  if(idx === -1) return;
   if(!confirm(`"${wps[idx].place}" wirklich löschen?`))return;
-  try{ await sbFetch(`/rest/v1/waypoints?id=eq.${id}`,{method:'DELETE'}); wps.splice(idx,1); updatePkgInfo(); renderMap(); renderPanel(); }
-  catch(e){alert('Fehler: '+e.message);}
+  try{
+    await sbFetch(`/rest/v1/waypoints?id=eq.${id}`,{method:'DELETE'});
+    wps.splice(idx,1);
+    updatePkgInfo(); renderMap(); renderPanel();
+  }catch(e){alert('Fehler: '+e.message);}
 }
 
 document.getElementById('fd').value=new Date().toISOString().slice(0,10);
 loadWaypoints();
+
+if('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error:', e));
+  });
+}
 </script>
 </body>
 </html>
