@@ -78,14 +78,12 @@
     #pkg-info {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 14px 20px;
-      display: flex;
-      gap: 0;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
     }
-    .pkg-item { flex-shrink: 0; padding: 0 20px 0 0; border-right: 1px solid var(--border); margin-right: 20px; }
-    .pkg-item:last-child { border-right: none; margin-right: 0; }
+    .pkg-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .pkg-item { padding: 12px 16px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .pkg-item:nth-child(2) { border-right: none; }
+    .pkg-item:nth-child(3) { border-bottom: none; border-right: 1px solid var(--border); }
+    .pkg-item:nth-child(4) { border-bottom: none; border-right: none; }
     .pkg-label { font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
     .pkg-value { font-size: 13px; font-weight: 500; color: var(--text); }
 
@@ -93,8 +91,8 @@
     #mapwrap { position: relative; width: 100%; height: 55vh; min-height: 320px; }
     #map { width: 100%; height: 100%; }
     #map-switcher {
-      position: absolute; bottom: 14px; left: 14px; z-index: 1000;
-      display: flex; gap: 6px; flex-wrap: wrap;
+      position: absolute; top: 10px; right: 10px; z-index: 1000;
+      display: flex; flex-direction: column; gap: 5px;
     }
     .ms-btn {
       font-family: 'Sora', sans-serif;
@@ -107,6 +105,7 @@
       backdrop-filter: blur(8px);
       transition: all 0.2s;
       letter-spacing: 0.02em;
+      white-space: nowrap;
     }
     .ms-btn:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
     .ms-btn.active { background: var(--accent); color: #fff; border-color: transparent; }
@@ -274,21 +273,23 @@
 </div>
 
 <div id="pkg-info">
-  <div class="pkg-item">
-    <div class="pkg-label">Paket</div>
-    <div class="pkg-value">📦 Persönliche Güter</div>
-  </div>
-  <div class="pkg-item">
-    <div class="pkg-label">Versandt</div>
-    <div class="pkg-value" id="pkg-sent">—</div>
-  </div>
-  <div class="pkg-item">
-    <div class="pkg-label">Route</div>
-    <div class="pkg-value">🚢 Seefracht</div>
-  </div>
-  <div class="pkg-item">
-    <div class="pkg-label">Status</div>
-    <div class="pkg-value" id="pkg-status">Unterwegs ✈️</div>
+  <div class="pkg-info-grid">
+    <div class="pkg-item">
+      <div class="pkg-label">Paket</div>
+      <div class="pkg-value">📦 Persönliche Güter</div>
+    </div>
+    <div class="pkg-item">
+      <div class="pkg-label">Versandt</div>
+      <div class="pkg-value" id="pkg-sent">—</div>
+    </div>
+    <div class="pkg-item">
+      <div class="pkg-label">Route</div>
+      <div class="pkg-value">🚢 Seefracht</div>
+    </div>
+    <div class="pkg-item">
+      <div class="pkg-label">Status</div>
+      <div class="pkg-value" id="pkg-status">Unterwegs 🚢</div>
+    </div>
   </div>
 </div>
 
