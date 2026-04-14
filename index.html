@@ -4,116 +4,297 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>G'day Mülheim 🦘</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-    body { background: #111; color: #e0e0e0; display: flex; flex-direction: column; min-height: 100vh; }
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c26;
+      --surface3: #242433;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.12);
+      --accent: #f97316;
+      --accent2: #fb923c;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #f1f0ee;
+      --text2: #9997a0;
+      --text3: #5c5a66;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
 
-    #header { background: #1e1e1e; border-bottom: 1px solid #2a2a2a; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
-    .htitle { font-size: 18px; font-weight: 600; color: #fff; }
-    .hsub { font-size: 12px; color: #777; margin-top: 2px; }
-    .db-status { font-size: 11px; padding: 3px 10px; border-radius: 20px; }
-    .db-ok { background: #1a3a2a; color: #4caf7d; }
-    .db-err { background: #3a1a1a; color: #ef7070; }
-    .db-loading { background: #1a2a3a; color: #5aabef; }
+    /* HERO HEADER */
+    #hero {
+      background: linear-gradient(135deg, #0f0c1a 0%, #1a0f2e 40%, #0f1a2e 100%);
+      padding: 28px 24px 24px;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+    #hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 220px; height: 220px;
+      background: radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    #hero::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: 30%;
+      width: 180px; height: 180px;
+      background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; position: relative; z-index: 1; }
+    .hero-emoji { font-size: 36px; line-height: 1; }
+    .db-status { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.03em; }
+    .db-ok { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+    .db-err { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+    .db-loading { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+    .hero-title { font-size: 28px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; line-height: 1.1; position: relative; z-index: 1; }
+    .hero-title span { color: var(--accent); }
+    .hero-sub { font-size: 13px; color: var(--text2); margin-top: 6px; font-weight: 300; position: relative; z-index: 1; letter-spacing: 0.02em; }
+    .hero-route { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--text3); position: relative; z-index: 1; }
+    .hero-route-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .hero-route-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--green), var(--accent), var(--red)); max-width: 80px; }
 
-    #map { width: 100%; height: 60vh; min-height: 380px; }
+    /* PACKAGE INFO */
+    #pkg-info {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .pkg-item { flex-shrink: 0; padding: 0 20px 0 0; border-right: 1px solid var(--border); margin-right: 20px; }
+    .pkg-item:last-child { border-right: none; margin-right: 0; }
+    .pkg-label { font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+    .pkg-value { font-size: 13px; font-weight: 500; color: var(--text); }
 
-    #panel { background: #1e1e1e; flex: 1; padding: 1.25rem 1.5rem; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 1.25rem; }
-    .tab { font-size: 13px; padding: 6px 18px; border: 1px solid #555; border-radius: 20px; cursor: pointer; background: transparent; color: #aaa; transition: all 0.15s; }
-    .tab.active { background: #333; color: #fff; font-weight: 500; border-color: #666; }
-    .sec { display: none; }
+    /* MAP */
+    #mapwrap { position: relative; width: 100%; height: 55vh; min-height: 320px; }
+    #map { width: 100%; height: 100%; }
+    #map-switcher {
+      position: absolute; bottom: 14px; left: 14px; z-index: 1000;
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .ms-btn {
+      font-family: 'Sora', sans-serif;
+      font-size: 11px; font-weight: 500;
+      padding: 5px 12px;
+      background: rgba(10,10,15,0.85);
+      color: rgba(255,255,255,0.6);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s;
+      letter-spacing: 0.02em;
+    }
+    .ms-btn:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+    .ms-btn.active { background: var(--accent); color: #fff; border-color: transparent; }
+
+    /* PANEL */
+    #panel { background: var(--bg); flex: 1; }
+    .tabs { display: flex; padding: 0 20px; border-bottom: 1px solid var(--border); }
+    .tab {
+      font-family: 'Sora', sans-serif;
+      font-size: 13px; font-weight: 500;
+      padding: 16px 4px; margin-right: 24px;
+      background: transparent; border: none;
+      color: var(--text3); cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s; letter-spacing: 0.01em;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    .sec { display: none; padding: 20px; }
     .sec.active { display: block; }
 
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
-    .stat { background: #2a2a2a; border-radius: 10px; padding: 12px; text-align: center; }
-    .sv { font-size: 24px; font-weight: 600; color: #fff; }
-    .sl { font-size: 11px; color: #777; margin-top: 3px; }
+    /* STATS */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; }
+    .sv { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+    .sv span { font-size: 12px; font-weight: 400; color: var(--text3); margin-left: 1px; }
+    .sl { font-size: 10px; font-weight: 500; color: var(--text3); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
 
+    /* TIMELINE */
     .tl { display: flex; flex-direction: column; }
-    .ti { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px solid #252525; align-items: flex-start; }
+    .ti { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
     .ti:last-child { border-bottom: none; }
-    .dc { display: flex; flex-direction: column; align-items: center; min-width: 20px; padding-top: 4px; }
-    .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
-    .dline { flex: 1; width: 1px; background: #333; margin-top: 4px; min-height: 18px; }
-    .tcontent { flex: 1; }
-    .tn { font-size: 14px; font-weight: 500; color: #fff; }
-    .td { font-size: 12px; color: #666; margin-top: 2px; }
-    .tnote { font-size: 13px; color: #888; margin-top: 4px; font-style: italic; }
-    .badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; margin-left: 6px; vertical-align: middle; }
-    .del-btn { background: transparent; border: none; color: #444; font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0; margin-top: 1px; transition: color 0.15s; }
-    .del-btn:hover { color: #ef7070; }
-    .empty-state { text-align: center; padding: 2.5rem; color: #555; font-size: 14px; }
+    .dc { display: flex; flex-direction: column; align-items: center; min-width: 22px; padding-top: 5px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px currentColor; }
+    .dline { flex: 1; width: 1px; background: var(--border2); margin-top: 6px; min-height: 20px; }
+    .tcontent { flex: 1; min-width: 0; }
+    .tn { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .td { font-size: 11px; color: var(--text3); margin-top: 3px; font-weight: 400; }
+    .tnote { font-size: 12px; color: var(--text2); margin-top: 5px; line-height: 1.5; }
+    .tphoto { margin-top: 8px; border-radius: var(--radius-sm); overflow: hidden; max-width: 200px; }
+    .tphoto img { width: 100%; display: block; }
+    .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.04em; text-transform: uppercase; flex-shrink: 0; }
+    .del-btn { background: transparent; border: none; color: var(--text3); font-size: 18px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; transition: color 0.15s; }
+    .del-btn:hover { color: var(--red); }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 14px; }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
 
-    /* Login prompt */
-    #login-prompt { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 2rem 0; }
-    .lp-icon { font-size: 32px; }
-    .lp-title { font-size: 14px; color: #aaa; text-align: center; }
+    /* LOGIN PROMPT */
+    #login-prompt { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 2.5rem 0; }
+    .lp-icon { font-size: 36px; }
+    .lp-title { font-size: 14px; font-weight: 500; color: var(--text2); text-align: center; line-height: 1.5; }
     .lp-row { display: flex; gap: 8px; align-items: center; }
-    .lp-input { padding: 9px 16px; background: #2a2a2a; border: 1px solid #444; border-radius: 10px; color: #fff; font-size: 15px; width: 170px; letter-spacing: 3px; text-align: center; }
-    .lp-input:focus { outline: none; border-color: #378ADD; }
-    .lp-btn { padding: 9px 20px; background: #378ADD; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; }
-    .lp-err { font-size: 12px; color: #ef7070; display: none; }
+    .lp-input {
+      font-family: 'Sora', sans-serif;
+      padding: 10px 16px; background: var(--surface2);
+      border: 1px solid var(--border2); border-radius: var(--radius-sm);
+      color: var(--text); font-size: 15px; width: 175px;
+      letter-spacing: 4px; text-align: center;
+    }
+    .lp-input:focus { outline: none; border-color: var(--accent); }
+    .lp-btn {
+      font-family: 'Sora', sans-serif;
+      padding: 10px 20px; background: var(--accent); color: #fff;
+      border: none; border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .lp-err { font-size: 12px; color: var(--red); display: none; }
 
-    /* Add form */
-    .form-section { display: flex; flex-direction: column; gap: 12px; }
+    /* ADD FORM */
+    .form-section { display: flex; flex-direction: column; gap: 14px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .form-field { display: flex; flex-direction: column; gap: 5px; }
     .form-field.full { grid-column: 1 / -1; }
-    .form-field label { font-size: 12px; color: #888; }
-    .form-field input { width: 100%; padding: 9px 12px; background: #2a2a2a; border: 1px solid #444; border-radius: 9px; color: #fff; font-size: 14px; }
-    .form-field input:focus { outline: none; border-color: #378ADD; }
+    .form-field label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+    .form-field input, .form-field textarea {
+      font-family: 'Sora', sans-serif;
+      width: 100%; padding: 10px 12px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); color: var(--text); font-size: 13px;
+    }
+    .form-field input:focus, .form-field textarea:focus { outline: none; border-color: var(--accent); }
+    .form-field textarea { resize: vertical; min-height: 60px; }
 
     .search-wrap { position: relative; grid-column: 1 / -1; }
-    .search-wrap input { width: 100%; padding: 9px 12px 9px 36px; background: #2a2a2a; border: 1px solid #444; border-radius: 9px; color: #fff; font-size: 14px; }
-    .search-wrap input:focus { outline: none; border-color: #378ADD; }
+    .search-wrap input { width: 100%; padding: 10px 12px 10px 38px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: 'Sora', sans-serif; }
+    .search-wrap input:focus { outline: none; border-color: var(--accent); }
     .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; pointer-events: none; }
-    .search-results { position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: #252525; border: 1px solid #555; border-radius: 10px; z-index: 1000; overflow: hidden; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
-    .search-result { padding: 10px 14px; font-size: 13px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; }
+    .search-results { position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); z-index: 1000; overflow: hidden; display: none; box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
+    .search-result { padding: 10px 14px; font-size: 13px; color: var(--text2); cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.15s; }
     .search-result:last-child { border-bottom: none; }
-    .search-result:hover { background: #333; }
-    .sr-name { font-weight: 500; color: #fff; }
-    .sr-detail { font-size: 11px; color: #777; margin-top: 2px; }
+    .search-result:hover { background: var(--surface3); }
+    .sr-name { font-weight: 600; color: var(--text); font-size: 13px; }
+    .sr-detail { font-size: 11px; color: var(--text3); margin-top: 2px; }
 
     .coords-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .coord-field { display: flex; flex-direction: column; gap: 5px; }
-    .coord-field label { font-size: 12px; color: #888; }
-    .coord-field input { width: 100%; padding: 9px 12px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 9px; color: #555; font-size: 12px; }
-    .coord-field input.filled { color: #5aabef; border-color: #1e3050; background: #141e2e; }
+    .coord-field label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+    .coord-field input { font-family: 'Sora', sans-serif; width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text3); font-size: 12px; }
+    .coord-field input.filled { color: var(--blue); border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.05); }
 
-    .hint-box { background: #141e2e; border: 1px solid #1e3050; border-radius: 9px; padding: 11px 14px; font-size: 12px; color: #5aabef; grid-column: 1 / -1; line-height: 1.7; }
+    /* Photo upload */
+    .photo-upload-area {
+      border: 1.5px dashed var(--border2); border-radius: var(--radius-sm);
+      padding: 16px; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      grid-column: 1 / -1;
+    }
+    .photo-upload-area:hover { border-color: var(--accent); background: rgba(249,115,22,0.04); }
+    .photo-upload-area input { display: none; }
+    .photo-upload-label { font-size: 12px; color: var(--text3); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .photo-upload-label .icon { font-size: 24px; }
+    #photo-preview { display: none; border-radius: var(--radius-sm); overflow: hidden; grid-column: 1 / -1; }
+    #photo-preview img { width: 100%; max-height: 160px; object-fit: cover; display: block; }
 
-    .acts { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+    .hint-box { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15); border-radius: var(--radius-sm); padding: 11px 14px; font-size: 12px; color: #60a5fa; grid-column: 1 / -1; line-height: 1.7; }
+
+    /* Email field */
+    .email-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; grid-column: 1 / -1; }
+    .email-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .email-inputs { display: flex; gap: 8px; }
+    .email-inputs input { font-family: 'Sora', sans-serif; flex: 1; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-size: 12px; }
+    .email-inputs input:focus { outline: none; border-color: var(--accent); }
+    .email-hint { font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+    .acts { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
     .acts-right { display: flex; gap: 8px; }
-    .btn { font-size: 13px; padding: 8px 20px; border-radius: 9px; cursor: pointer; font-weight: 500; }
-    .bp { background: #378ADD; color: #fff; border: none; }
-    .bp:hover { background: #2a7ac8; }
-    .bs { background: transparent; color: #aaa; border: 1px solid #555; }
-    .logout-link { font-size: 12px; color: #555; cursor: pointer; text-decoration: underline; }
-    .logout-link:hover { color: #aaa; }
+    .btn { font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: var(--radius-sm); cursor: pointer; letter-spacing: 0.01em; transition: all 0.15s; }
+    .bp { background: var(--accent); color: #fff; border: none; }
+    .bp:hover { background: var(--accent2); }
+    .bs { background: transparent; color: var(--text3); border: 1px solid var(--border2); }
+    .bs:hover { color: var(--text); }
+    .logout-link { font-size: 12px; color: var(--text3); cursor: pointer; text-decoration: underline; font-weight: 400; }
 
-    /* Leaflet custom popup */
-    .leaflet-popup-content-wrapper { background: #1e1e1e; color: #e0e0e0; border: 1px solid #444; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
-    .leaflet-popup-tip { background: #1e1e1e; }
-    .leaflet-popup-content { font-size: 13px; line-height: 1.6; }
-    .popup-title { font-weight: 600; font-size: 14px; color: #fff; }
-    .popup-date { color: #888; font-size: 12px; }
-    .popup-note { color: #aaa; font-style: italic; margin-top: 4px; }
+    /* Leaflet */
+    .leaflet-popup-content-wrapper { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,0.6); font-family: 'Sora', sans-serif; }
+    .leaflet-popup-tip { background: var(--surface2); }
+    .leaflet-popup-content { font-size: 13px; line-height: 1.6; margin: 12px 16px; }
+    .popup-title { font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 3px; }
+    .popup-date { color: var(--text3); font-size: 11px; }
+    .popup-note { color: var(--text2); font-size: 12px; margin-top: 5px; font-style: italic; }
+    .popup-img { margin-top: 8px; border-radius: 6px; overflow: hidden; }
+    .popup-img img { width: 100%; max-height: 120px; object-fit: cover; display: block; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }
   </style>
 </head>
 <body>
 
-<div id="header">
-  <div>
-    <div class="htitle">🦘 G'day Mülheim</div>
-    <div class="hsub">AirTag · Melbourne → Mülheim an der Ruhr</div>
+<div id="hero">
+  <div class="hero-top">
+    <div class="hero-emoji">🦘</div>
+    <span class="db-status db-loading" id="dbStatus">⏳ verbinde...</span>
   </div>
-  <span class="db-status db-loading" id="dbStatus">⏳ verbinde...</span>
+  <div class="hero-title">G'day <span>Mülheim</span></div>
+  <div class="hero-sub">AirTag verfolgt ein Paket auf seiner Reise von Australien ins Ruhrgebiet</div>
+  <div class="hero-route">
+    <div class="hero-route-dot" style="background:var(--green);color:var(--green)"></div>
+    <span style="color:var(--text2);font-size:11px">Melbourne</span>
+    <div class="hero-route-line"></div>
+    <span style="color:var(--text2);font-size:11px">Mülheim an der Ruhr</span>
+    <div class="hero-route-dot" style="background:var(--red);color:var(--red)"></div>
+  </div>
 </div>
 
-<div id="map"></div>
+<div id="pkg-info">
+  <div class="pkg-item">
+    <div class="pkg-label">Paket</div>
+    <div class="pkg-value">📦 Persönliche Güter</div>
+  </div>
+  <div class="pkg-item">
+    <div class="pkg-label">Versandt</div>
+    <div class="pkg-value" id="pkg-sent">—</div>
+  </div>
+  <div class="pkg-item">
+    <div class="pkg-label">Route</div>
+    <div class="pkg-value">🚢 Seefracht</div>
+  </div>
+  <div class="pkg-item">
+    <div class="pkg-label">Status</div>
+    <div class="pkg-value" id="pkg-status">Unterwegs ✈️</div>
+  </div>
+</div>
+
+<div id="mapwrap">
+  <div id="map"></div>
+  <div id="map-switcher">
+    <button class="ms-btn active" onclick="setStyle('satellite-v9', this)">🛰️ Satellite</button>
+    <button class="ms-btn" onclick="setStyle('satellite-streets-v12', this)">🛰️ Satellite+</button>
+    <button class="ms-btn" onclick="setStyle('dark-v11', this)">🌙 Dark</button>
+    <button class="ms-btn" onclick="setStyle('streets-v12', this)">🗺️ Streets</button>
+  </div>
+</div>
 
 <div id="panel">
   <div class="tabs">
@@ -145,7 +326,7 @@
         <div class="form-row">
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
-            <input id="fsearch" placeholder="Ort suchen, z.B. &quot;Singapur&quot; oder &quot;Hafen Hamburg&quot;" oninput="onSearch()" onkeydown="if(event.key==='Escape')closeSearch()"/>
+            <input id="fsearch" placeholder='Ort suchen, z.B. "Singapur" oder "Hafen Hamburg"' oninput="onSearch()" onkeydown="if(event.key==='Escape')closeSearch()"/>
             <div class="search-results" id="searchResults"></div>
           </div>
         </div>
@@ -154,11 +335,30 @@
           <div class="form-field"><label>Datum</label><input id="fd" type="date"/></div>
         </div>
         <div class="coords-row">
-          <div class="coord-field"><label>Breitengrad (auto)</label><input id="flat" type="number" step="0.001" readonly/></div>
-          <div class="coord-field"><label>Längengrad (auto)</label><input id="flon" type="number" step="0.001" readonly/></div>
+          <div class="coord-field"><label>Breitengrad</label><input id="flat" type="number" step="0.001" readonly/></div>
+          <div class="coord-field"><label>Längengrad</label><input id="flon" type="number" step="0.001" readonly/></div>
         </div>
         <div class="form-row">
           <div class="form-field full"><label>Notiz</label><input id="fn" placeholder="z.B. Im Hafen gesehen, Weiterfahrt morgen"/></div>
+        </div>
+        <div class="form-row">
+          <label class="photo-upload-area" for="fphoto">
+            <input type="file" id="fphoto" accept="image/*" onchange="previewPhoto(this)" style="display:none"/>
+            <span class="photo-upload-label">
+              <span class="icon">📸</span>
+              <span>Foto hinzufügen (optional)<br/><span style="font-size:10px;color:var(--text3)">Screenshot aus „Wo ist?" o.ä.</span></span>
+            </span>
+          </label>
+          <div id="photo-preview"><img id="photo-preview-img" src="" alt="Vorschau"/><div style="text-align:center;margin-top:6px"><button class="btn bs" style="padding:4px 12px;font-size:11px" onclick="clearPhoto()">Foto entfernen</button></div></div>
+        </div>
+        <div class="form-row">
+          <div class="email-section">
+            <div class="email-label">📧 Benachrichtigung senden</div>
+            <div class="email-inputs">
+              <input id="femail" type="email" placeholder="empfaenger@email.de"/>
+            </div>
+            <div class="email-hint">Wenn ausgefüllt: E-Mail nach dem Speichern via mailto öffnen</div>
+          </div>
         </div>
         <div class="acts">
           <span class="logout-link" onclick="lockForm()">🔒 abmelden</span>
@@ -178,32 +378,28 @@ const SB_URL = 'https://nsxawxlcpzpeskmxeqwg.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeGF3eGxjcHpwZXNrbXhlcXdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTAxODgsImV4cCI6MjA5MTcyNjE4OH0.vkbdn2EXDNEAd03gWe6GmSTGM4SiLd2mFa_gVKLXBs0';
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiamFub3BwIiwiYSI6ImNtbnlndGJ3MTAxdGEycW44OXFwc3c2ODQifQ.10686Wtpi3AO7hBY4V9n3Q';
 
-let wps = [];
-let map, routeLine, markers = [];
-let searchTimer = null;
-let authenticated = false;
+let wps = [], map, tileLayer, routeLine, markers = [];
+let searchTimer = null, authenticated = false, currentStyle = 'satellite-v9';
+let photoBase64 = null;
 
-// Init map
+// Map init
 map = L.map('map', { zoomControl: true, scrollWheelZoom: true }).setView([20, 80], 3);
-L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=' + MAPBOX_TOKEN, {
-  attribution: '© <a href="https://www.mapbox.com/">Mapbox</a> © <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-  tileSize: 512,
-  zoomOffset: -1,
-  maxZoom: 18
-}).addTo(map);
+function getTileUrl(s) { return `https://api.mapbox.com/styles/v1/mapbox/${s}/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`; }
+tileLayer = L.tileLayer(getTileUrl('satellite-v9'), { attribution: '© Mapbox © OpenStreetMap', tileSize: 512, zoomOffset: -1, maxZoom: 18 }).addTo(map);
+
+function setStyle(style, btn) {
+  if(style === currentStyle) return;
+  currentStyle = style;
+  map.removeLayer(tileLayer);
+  tileLayer = L.tileLayer(getTileUrl(style), { attribution: '© Mapbox © OpenStreetMap', tileSize: 512, zoomOffset: -1, maxZoom: 18 }).addTo(map);
+  renderMap();
+  document.querySelectorAll('.ms-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
 
 // Supabase
 async function sbFetch(path, opts={}) {
-  const res = await fetch(SB_URL + path, {
-    ...opts,
-    headers: {
-      'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': opts.prefer || '',
-      ...(opts.headers||{})
-    }
-  });
+  const res = await fetch(SB_URL + path, { ...opts, headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': opts.prefer||'', ...(opts.headers||{}) }});
   if(!res.ok) throw new Error(await res.text());
   const text = await res.text();
   return text ? JSON.parse(text) : null;
@@ -212,14 +408,23 @@ async function sbFetch(path, opts={}) {
 async function loadWaypoints() {
   try {
     const data = await sbFetch('/rest/v1/waypoints?select=*&order=date.asc');
-    wps = data.map(r => ({ id:r.id, place:r.place, lat:r.lat, lon:r.lon, date:r.date, note:r.note||'' }));
+    wps = data.map(r => ({ id:r.id, place:r.place, lat:r.lat, lon:r.lon, date:r.date, note:r.note||'', photo:r.photo||'' }));
     document.getElementById('dbStatus').className = 'db-status db-ok';
     document.getElementById('dbStatus').textContent = '● live';
+    updatePkgInfo();
     renderMap(); renderPanel();
   } catch(e) {
     document.getElementById('dbStatus').className = 'db-status db-err';
     document.getElementById('dbStatus').textContent = '✕ DB-Fehler';
-    console.error(e);
+  }
+}
+
+function updatePkgInfo() {
+  if(wps.length > 0) {
+    document.getElementById('pkg-sent').textContent = new Date(wps[0].date).toLocaleDateString('de-DE', {day:'2-digit', month:'long', year:'numeric'});
+    const last = wps[wps.length-1];
+    const isArrived = last.place.toLowerCase().includes('mülheim') || last.place.toLowerCase().includes('deutschland') || last.place.toLowerCase().includes('germany');
+    document.getElementById('pkg-status').textContent = isArrived ? 'Angekommen 🎉' : 'Unterwegs 🚢';
   }
 }
 
@@ -230,172 +435,155 @@ function renderMap() {
 
   if(wps.length > 1) {
     const coords = wps.map(w => [w.lat, w.lon]);
-    routeLine = L.polyline(coords, { color: '#ffffff', weight: 2, dashArray: '6 5', opacity: 0.7 }).addTo(map);
+    routeLine = L.polyline(coords, { color: '#f97316', weight: 2.5, dashArray: '8 6', opacity: 0.85 }).addTo(map);
     map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+  } else if(wps.length === 1) {
+    map.setView([wps[0].lat, wps[0].lon], 6);
   }
 
   wps.forEach((w, i) => {
-    const isFirst = i === 0, isLast = i === wps.length - 1;
-    const color = isFirst ? '#1D9E75' : isLast ? '#E24B4A' : '#5aabef';
-    const size = (isFirst || isLast) ? 14 : 11;
+    const isFirst = i===0, isLast = i===wps.length-1;
+    const color = isFirst ? '#22c55e' : isLast ? '#f97316' : '#3b82f6';
+    const size = (isFirst||isLast) ? 16 : 12;
     const icon = L.divIcon({
       className: '',
-      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.6)"></div>`,
-      iconSize: [size, size],
-      iconAnchor: [size/2, size/2]
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 0 0 3px ${color}33,0 2px 8px rgba(0,0,0,0.6)"></div>`,
+      iconSize: [size,size], iconAnchor: [size/2,size/2]
     });
     const m = L.marker([w.lat, w.lon], { icon }).addTo(map);
-    m.bindPopup(`
-      <div class="popup-title">${w.place}</div>
-      <div class="popup-date">${new Date(w.date).toLocaleDateString('de-DE', {day:'2-digit', month:'long', year:'numeric'})}</div>
-      ${w.note ? `<div class="popup-note">${w.note}</div>` : ''}
-    `);
+    m.bindPopup(`<div class="popup-title">${w.place}</div><div class="popup-date">${new Date(w.date).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'})}</div>${w.note?`<div class="popup-note">${w.note}</div>`:''}${w.photo?`<div class="popup-img"><img src="${w.photo}" alt=""/></div>`:''}`);
     markers.push(m);
   });
 }
 
 function renderPanel() {
-  function haversine(a,b) {
-    const R=6371, r=d=>d*Math.PI/180;
-    const dLa=r(b.lat-a.lat), dLo=r(b.lon-a.lon);
-    const x=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;
-    return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
-  }
-  let km = 0;
-  for(let i=1;i<wps.length;i++) km += haversine(wps[i-1],wps[i]);
-  km = Math.round(km);
-  const days = wps.length < 2 ? 0 : Math.round((new Date(wps[wps.length-1].date)-new Date(wps[0].date))/86400000);
-
-  document.getElementById('stats').innerHTML = `
+  function hav(a,b){const R=6371,r=d=>d*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lon-a.lon),x=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+  let km=0; for(let i=1;i<wps.length;i++) km+=hav(wps[i-1],wps[i]); km=Math.round(km);
+  const days=wps.length<2?0:Math.round((new Date(wps[wps.length-1].date)-new Date(wps[0].date))/86400000);
+  document.getElementById('stats').innerHTML=`
     <div class="stat"><div class="sv">${wps.length}</div><div class="sl">Wegpunkte</div></div>
-    <div class="stat"><div class="sv">${km.toLocaleString('de-DE')}</div><div class="sl">km</div></div>
+    <div class="stat"><div class="sv">${km>0?km.toLocaleString('de-DE'):'—'}</div><div class="sl">km</div></div>
     <div class="stat"><div class="sv">${days}</div><div class="sl">Reisetage</div></div>`;
 
-  if(!wps.length) {
-    document.getElementById('tl').innerHTML = '<div class="empty-state">Noch keine Wegpunkte – füge den ersten hinzu!</div>';
+  if(!wps.length){
+    document.getElementById('tl').innerHTML='<div class="empty-state"><div class="empty-icon">🗺️</div>Noch keine Wegpunkte –<br/>füge den ersten hinzu!</div>';
     return;
   }
 
-  document.getElementById('tl').innerHTML = wps.slice().reverse().map((w, i, arr) => {
-    const origIdx = wps.indexOf(w);
-    const isFirst = origIdx === 0, isLast = origIdx === wps.length - 1;
-    const color = isFirst ? '#1D9E75' : isLast ? '#E24B4A' : '#5aabef';
-    const badge = isFirst
-      ? `<span class="badge" style="background:#1a3a2a;color:#4caf7d">Start</span>`
-      : isLast
-      ? `<span class="badge" style="background:#3a1a1a;color:#ef7070">Zuletzt gesehen</span>`
-      : `<span class="badge" style="background:#1a2a3a;color:#5aabef">Unterwegs</span>`;
+  document.getElementById('tl').innerHTML=wps.slice().reverse().map((w,i,arr)=>{
+    const origIdx=wps.indexOf(w),isFirst=origIdx===0,isLast=origIdx===wps.length-1;
+    const color=isFirst?'#22c55e':isLast?'#f97316':'#3b82f6';
+    const badge=isFirst
+      ?`<span class="badge" style="background:rgba(34,197,94,0.12);color:#22c55e">Start</span>`
+      :isLast
+      ?`<span class="badge" style="background:rgba(249,115,22,0.12);color:#f97316">Zuletzt</span>`
+      :`<span class="badge" style="background:rgba(59,130,246,0.12);color:#60a5fa">Unterwegs</span>`;
     return `<div class="ti">
-      <div class="dc">
-        <div class="dot" style="background:${color}"></div>
-        ${i < arr.length-1 ? '<div class="dline"></div>' : ''}
-      </div>
+      <div class="dc"><div class="dot" style="background:${color};color:${color}"></div>${i<arr.length-1?'<div class="dline"></div>':''}</div>
       <div class="tcontent">
         <div class="tn">${w.place}${badge}</div>
-        <div class="td">${new Date(w.date).toLocaleDateString('de-DE', {day:'2-digit', month:'long', year:'numeric'})}</div>
-        ${w.note ? `<div class="tnote">${w.note}</div>` : ''}
+        <div class="td">${new Date(w.date).toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'})}</div>
+        ${w.note?`<div class="tnote">${w.note}</div>`:''}
+        ${w.photo?`<div class="tphoto"><img src="${w.photo}" alt="Foto"/></div>`:''}
       </div>
-      ${authenticated ? `<button class="del-btn" onclick="deleteWP('${w.id}',${origIdx})" title="Löschen">×</button>` : ''}
+      ${authenticated?`<button class="del-btn" onclick="deleteWP('${w.id}',${origIdx})" title="Löschen">×</button>`:''}
     </div>`;
   }).join('');
 }
 
-function checkPw() {
-  if(document.getElementById('pwInput').value === PASSWORD) {
-    authenticated = true;
-    document.getElementById('login-prompt').style.display = 'none';
-    document.getElementById('add-form').style.display = 'block';
-    document.getElementById('pwInput').value = '';
-    document.getElementById('pwErr').style.display = 'none';
+// Photo handling – compress to max 800px wide, JPEG 70%
+function previewPhoto(input) {
+  if(!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = e => {
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if(w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      document.getElementById('photo-preview-img').src = photoBase64;
+      document.getElementById('photo-preview').style.display = 'block';
+      document.querySelector('.photo-upload-area').style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearPhoto() {
+  photoBase64 = null;
+  document.getElementById('fphoto').value = '';
+  document.getElementById('photo-preview').style.display = 'none';
+  document.querySelector('.photo-upload-area').style.display = 'block';
+}
+
+// Auth
+function checkPw(){
+  if(document.getElementById('pwInput').value===PASSWORD){
+    authenticated=true;
+    document.getElementById('login-prompt').style.display='none';
+    document.getElementById('add-form').style.display='block';
+    document.getElementById('pwInput').value='';
+    document.getElementById('pwErr').style.display='none';
     renderPanel();
-  } else {
-    document.getElementById('pwErr').style.display = 'block';
-    document.getElementById('pwInput').value = '';
-  }
+  } else { document.getElementById('pwErr').style.display='block'; document.getElementById('pwInput').value=''; }
+}
+function lockForm(){
+  authenticated=false;
+  document.getElementById('add-form').style.display='none';
+  document.getElementById('login-prompt').style.display='flex';
+  renderPanel(); showTab('tl');
 }
 
-function lockForm() {
-  authenticated = false;
-  document.getElementById('add-form').style.display = 'none';
-  document.getElementById('login-prompt').style.display = 'flex';
-  renderPanel();
-  showTab('tl');
+// Search
+function onSearch(){ clearTimeout(searchTimer); const q=document.getElementById('fsearch').value.trim(); if(q.length<2){closeSearch();return;} searchTimer=setTimeout(()=>doSearch(q),400); }
+async function doSearch(q){ try{ const res=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`,{headers:{'Accept-Language':'de'}}); showResults(await res.json()); }catch(e){closeSearch();} }
+function showResults(data){ const el=document.getElementById('searchResults'); if(!data.length){el.style.display='none';return;} el.innerHTML=data.map((r,i)=>`<div class="search-result" onclick="selectResult(${i})"><div class="sr-name">${r.name||r.display_name.split(',')[0]}</div><div class="sr-detail">${r.display_name}</div></div>`).join(''); el.style.display='block'; el._data=data; }
+function selectResult(i){ const r=document.getElementById('searchResults')._data[i]; const name=r.name||r.display_name.split(',')[0]; document.getElementById('fp').value=name; document.getElementById('fsearch').value=name; document.getElementById('flat').value=parseFloat(r.lat).toFixed(4); document.getElementById('flon').value=parseFloat(r.lon).toFixed(4); document.getElementById('flat').classList.add('filled'); document.getElementById('flon').classList.add('filled'); closeSearch(); }
+function closeSearch(){ document.getElementById('searchResults').style.display='none'; }
+document.addEventListener('click',e=>{ if(!e.target.closest('.search-wrap'))closeSearch(); });
+
+function showTab(n){ document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&n==='tl')||(i===1&&n==='add'))); document.getElementById('sec-tl').classList.toggle('active',n==='tl'); document.getElementById('sec-add').classList.toggle('active',n==='add'); }
+
+async function addWP(){
+  const place=document.getElementById('fp').value.trim();
+  const date=document.getElementById('fd').value;
+  const lat=parseFloat(document.getElementById('flat').value);
+  const lon=parseFloat(document.getElementById('flon').value);
+  const note=document.getElementById('fn').value.trim();
+  const email=document.getElementById('femail').value.trim();
+  if(!place||!date||isNaN(lat)||isNaN(lon)){alert('Bitte erst einen Ort suchen und auswählen.');return;}
+  try{
+    const payload={place,lat,lon,date,note};
+    if(photoBase64) payload.photo=photoBase64;
+    const saved=await sbFetch('/rest/v1/waypoints',{method:'POST',prefer:'return=representation',body:JSON.stringify(payload)});
+    wps.push({id:saved[0].id,place,lat,lon,date,note,photo:photoBase64||''});
+    wps.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    ['fp','fsearch','fn','femail'].forEach(id=>document.getElementById(id).value='');
+    ['flat','flon'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('filled');});
+    clearPhoto();
+    // Email notification via mailto
+    if(email){
+      const subject=encodeURIComponent(`G'day Mülheim – Neuer Wegpunkt: ${place}`);
+      const body=encodeURIComponent(`Der AirTag wurde gesehen!\n\nOrt: ${place}\nDatum: ${new Date(date).toLocaleDateString('de-DE')}\n${note?'Notiz: '+note+'\n':''}\nReise verfolgen: https://gday-muelheim.vercel.app`);
+      window.open(`mailto:${email}?subject=${subject}&body=${body}`);
+    }
+    updatePkgInfo(); renderMap(); renderPanel(); showTab('tl');
+  }catch(e){alert('Fehler beim Speichern: '+e.message);}
 }
 
-function onSearch() {
-  clearTimeout(searchTimer);
-  const q = document.getElementById('fsearch').value.trim();
-  if(q.length < 2) { closeSearch(); return; }
-  searchTimer = setTimeout(() => doSearch(q), 400);
+async function deleteWP(id,idx){
+  if(!confirm(`"${wps[idx].place}" wirklich löschen?`))return;
+  try{ await sbFetch(`/rest/v1/waypoints?id=eq.${id}`,{method:'DELETE'}); wps.splice(idx,1); updatePkgInfo(); renderMap(); renderPanel(); }
+  catch(e){alert('Fehler: '+e.message);}
 }
 
-async function doSearch(q) {
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`, { headers: {'Accept-Language':'de'} });
-    showResults(await res.json());
-  } catch(e) { closeSearch(); }
-}
-
-function showResults(data) {
-  const el = document.getElementById('searchResults');
-  if(!data.length) { el.style.display = 'none'; return; }
-  el.innerHTML = data.map((r,i) => `
-    <div class="search-result" onclick="selectResult(${i})">
-      <div class="sr-name">${r.name || r.display_name.split(',')[0]}</div>
-      <div class="sr-detail">${r.display_name}</div>
-    </div>`).join('');
-  el.style.display = 'block';
-  el._data = data;
-}
-
-function selectResult(i) {
-  const r = document.getElementById('searchResults')._data[i];
-  const name = r.name || r.display_name.split(',')[0];
-  document.getElementById('fp').value = name;
-  document.getElementById('fsearch').value = name;
-  const latEl = document.getElementById('flat'), lonEl = document.getElementById('flon');
-  latEl.value = parseFloat(r.lat).toFixed(4);
-  lonEl.value = parseFloat(r.lon).toFixed(4);
-  latEl.classList.add('filled'); lonEl.classList.add('filled');
-  closeSearch();
-}
-
-function closeSearch() { document.getElementById('searchResults').style.display = 'none'; }
-document.addEventListener('click', e => { if(!e.target.closest('.search-wrap')) closeSearch(); });
-
-function showTab(n) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&n==='tl')||(i===1&&n==='add')));
-  document.getElementById('sec-tl').classList.toggle('active', n==='tl');
-  document.getElementById('sec-add').classList.toggle('active', n==='add');
-}
-
-async function addWP() {
-  const place = document.getElementById('fp').value.trim();
-  const date = document.getElementById('fd').value;
-  const lat = parseFloat(document.getElementById('flat').value);
-  const lon = parseFloat(document.getElementById('flon').value);
-  const note = document.getElementById('fn').value.trim();
-  if(!place||!date||isNaN(lat)||isNaN(lon)) { alert('Bitte erst einen Ort suchen und auswählen.'); return; }
-  try {
-    const saved = await sbFetch('/rest/v1/waypoints', { method:'POST', prefer:'return=representation', body: JSON.stringify({place,lat,lon,date,note}) });
-    wps.push({ id:saved[0].id, place, lat, lon, date, note });
-    wps.sort((a,b) => new Date(a.date)-new Date(b.date));
-    ['fp','fsearch','fn'].forEach(id => document.getElementById(id).value='');
-    ['flat','flon'].forEach(id => { document.getElementById(id).value=''; document.getElementById(id).classList.remove('filled'); });
-    renderMap(); renderPanel(); showTab('tl');
-  } catch(e) { alert('Fehler beim Speichern: ' + e.message); }
-}
-
-async function deleteWP(id, idx) {
-  if(!confirm(`"${wps[idx].place}" wirklich löschen?`)) return;
-  try {
-    await sbFetch(`/rest/v1/waypoints?id=eq.${id}`, { method:'DELETE' });
-    wps.splice(idx, 1);
-    renderMap(); renderPanel();
-  } catch(e) { alert('Fehler beim Löschen: ' + e.message); }
-}
-
-document.getElementById('fd').value = new Date().toISOString().slice(0,10);
+document.getElementById('fd').value=new Date().toISOString().slice(0,10);
 loadWaypoints();
 </script>
 </body>
