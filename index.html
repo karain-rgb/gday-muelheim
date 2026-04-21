@@ -461,7 +461,7 @@ async function sbFetch(path, opts={}) {
 
 async function loadWaypoints() {
   try {
-    const data = await sbFetch('/rest/v1/waypoints?select=*&order=sort_order.asc.nullslast,created_at.asc');
+    const data = await sbFetch('/rest/v1/waypoints?select=*&order=sort_order.asc,created_at.asc');
     wps = data.map(r => ({ id:r.id, place:r.place, lat:r.lat, lon:r.lon, date:r.date, note:r.note||'', photo:r.photo||'', created_at:r.created_at||'', sort_order:r.sort_order||null }));
     document.getElementById('dbStatus').className = 'db-status db-ok';
     document.getElementById('dbStatus').textContent = '● live';
