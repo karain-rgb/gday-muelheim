@@ -149,6 +149,36 @@
     .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.04em; text-transform: uppercase; flex-shrink: 0; }
     .del-btn { background: transparent; border: none; color: var(--text3); font-size: 18px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; transition: color 0.15s; }
     .del-btn:hover { color: var(--red); }
+    .edit-btn { background: transparent; border: none; color: var(--text3); font-size: 14px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; transition: color 0.15s; }
+    .edit-btn:hover { color: var(--accent); }
+    .ti-actions { display: flex; align-items: flex-start; gap: 2px; padding-top: 2px; }
+
+    /* EDIT MODAL */
+    #edit-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); z-index: 9000;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #edit-modal-overlay.open { display: flex; }
+    #edit-modal {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius); padding: 24px; width: 100%; max-width: 420px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.8);
+    }
+    .em-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 18px; }
+    .em-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .em-field label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+    .em-field input, .em-field textarea {
+      font-family: 'Sora', sans-serif; width: 100%;
+      padding: 10px 12px; background: var(--surface2);
+      border: 1px solid var(--border2); border-radius: var(--radius-sm);
+      color: var(--text); font-size: 13px;
+    }
+    .em-field input:focus, .em-field textarea:focus { outline: none; border-color: var(--accent); }
+    .em-field textarea { resize: vertical; min-height: 70px; }
+    .em-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+    .em-hint { font-size: 11px; color: var(--text3); margin-bottom: 16px; line-height: 1.5; }
     .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 14px; }
     .empty-icon { font-size: 40px; margin-bottom: 12px; }
 
@@ -378,6 +408,20 @@
   </div>
 </div>
 
+<!-- EDIT MODAL -->
+<div id="edit-modal-overlay">
+  <div id="edit-modal">
+    <div class="em-title">✏️ Wegpunkt bearbeiten</div>
+    <div class="em-hint">Ort und Koordinaten können nicht geändert werden, da sie die Position auf der Karte bestimmen.</div>
+    <div class="em-field"><label>Datum</label><input id="em-date" type="date"/></div>
+    <div class="em-field"><label>Notiz</label><textarea id="em-note" rows="3" placeholder="Optionale Notiz..."></textarea></div>
+    <div class="em-actions">
+      <button class="btn bs" onclick="closeEditModal()">Abbrechen</button>
+      <button class="btn bp" onclick="saveEdit()">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const PASSWORD = 'vT9#mK4$xR2!pL8w';
 const SB_URL = 'https://nsxawxlcpzpeskmxeqwg.supabase.co';
@@ -417,8 +461,8 @@ async function sbFetch(path, opts={}) {
 
 async function loadWaypoints() {
   try {
-    const data = await sbFetch('/rest/v1/waypoints?select=*&order=date.asc');
-    wps = data.map(r => ({ id:r.id, place:r.place, lat:r.lat, lon:r.lon, date:r.date, note:r.note||'', photo:r.photo||'' }));
+    const data = await sbFetch('/rest/v1/waypoints?select=*&order=date.asc,created_at.asc');
+    wps = data.map(r => ({ id:r.id, place:r.place, lat:r.lat, lon:r.lon, date:r.date, note:r.note||'', photo:r.photo||'', created_at:r.created_at||'' }));
     document.getElementById('dbStatus').className = 'db-status db-ok';
     document.getElementById('dbStatus').textContent = '● live';
     updatePkgInfo();
@@ -496,7 +540,7 @@ function renderPanel() {
         ${w.note?`<div class="tnote">${w.note}</div>`:''}
         ${w.photo?`<div class="tphoto"><img src="${w.photo}" alt="Foto"/></div>`:''}
       </div>
-      ${authenticated?`<button class="del-btn" onclick="deleteWP('${w.id}')" title="Löschen">×</button>`:''}
+      ${authenticated?`<div class="ti-actions"><button class="edit-btn" onclick="openEditModal('${w.id}')" title="Bearbeiten">✏️</button><button class="del-btn" onclick="deleteWP('${w.id}')" title="Löschen">×</button></div>`:''}
     </div>`;
   }).join('');
 }
@@ -577,8 +621,8 @@ async function addWP(){
     const payload={place,lat,lon,date,note};
     if(photoBase64) payload.photo=photoBase64;
     const saved=await sbFetch('/rest/v1/waypoints',{method:'POST',prefer:'return=representation',body:JSON.stringify(payload)});
-    wps.push({id:saved[0].id,place,lat,lon,date,note:note||'',photo:photoBase64||''});
-    wps.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    wps.push({id:saved[0].id,place,lat,lon,date,note:note||'',photo:photoBase64||'',created_at:saved[0].created_at||''});
+    wps.sort((a,b)=>{ const dd=new Date(a.date)-new Date(b.date); return dd!==0?dd:new Date(a.created_at)-new Date(b.created_at); });
     ['fp','fsearch','fn','femail'].forEach(id=>document.getElementById(id).value='');
     ['flat','flon'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('filled');});
     clearPhoto();
@@ -590,6 +634,46 @@ async function addWP(){
     updatePkgInfo(); renderMap(); renderPanel(); showTab('tl');
   }catch(e){alert('Fehler beim Speichern: '+e.message);}
 }
+
+let editingId = null;
+
+function openEditModal(id) {
+  const w = wps.find(x => x.id === id);
+  if(!w) return;
+  editingId = id;
+  document.getElementById('em-date').value = w.date;
+  document.getElementById('em-note').value = w.note || '';
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  editingId = null;
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+}
+
+async function saveEdit() {
+  if(!editingId) return;
+  const date = document.getElementById('em-date').value;
+  const note = document.getElementById('em-note').value.trim() || null;
+  if(!date) { alert('Bitte ein Datum angeben.'); return; }
+  try {
+    await sbFetch(`/rest/v1/waypoints?id=eq.${editingId}`, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: JSON.stringify({ date, note })
+    });
+    const idx = wps.findIndex(x => x.id === editingId);
+    if(idx !== -1) { wps[idx].date = date; wps[idx].note = note || ''; }
+    wps.sort((a,b)=>{ const dd=new Date(a.date)-new Date(b.date); return dd!==0?dd:new Date(a.created_at)-new Date(b.created_at); });
+    closeEditModal();
+    updatePkgInfo(); renderMap(); renderPanel();
+  } catch(e) { alert('Fehler beim Speichern: ' + e.message); }
+}
+
+// Close modal on overlay click
+document.getElementById('edit-modal-overlay').addEventListener('click', function(e) {
+  if(e.target === this) closeEditModal();
+});
 
 async function deleteWP(id){
   const idx = wps.findIndex(w => w.id === id);
