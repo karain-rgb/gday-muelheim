@@ -461,8 +461,8 @@ async function sbFetch(path, opts={}) {
 
 async function loadWaypoints() {
   try {
-    const data = await sbFetch('/rest/v1/waypoints?select=*&order=date.asc,created_at.asc');
-    wps = data.map(r => ({ id:r.id, place:r.place, lat:r.lat, lon:r.lon, date:r.date, note:r.note||'', photo:r.photo||'', created_at:r.created_at||'' }));
+    const data = await sbFetch('/rest/v1/waypoints?select=*&order=sort_order.asc.nullslast,created_at.asc');
+    wps = data.map(r => ({ id:r.id, place:r.place, lat:r.lat, lon:r.lon, date:r.date, note:r.note||'', photo:r.photo||'', created_at:r.created_at||'', sort_order:r.sort_order||null }));
     document.getElementById('dbStatus').className = 'db-status db-ok';
     document.getElementById('dbStatus').textContent = '● live';
     updatePkgInfo();
@@ -618,11 +618,12 @@ async function addWP(){
   const email=document.getElementById('femail').value.trim();
   if(!place||!date||isNaN(lat)||isNaN(lon)){alert('Bitte erst einen Ort suchen und auswählen.');return;}
   try{
-    const payload={place,lat,lon,date,note};
+    const nextOrder = wps.length > 0 ? Math.max(...wps.map(w => w.sort_order||0)) + 1 : 1;
+    const payload={place,lat,lon,date,note,sort_order:nextOrder};
     if(photoBase64) payload.photo=photoBase64;
     const saved=await sbFetch('/rest/v1/waypoints',{method:'POST',prefer:'return=representation',body:JSON.stringify(payload)});
-    wps.push({id:saved[0].id,place,lat,lon,date,note:note||'',photo:photoBase64||'',created_at:saved[0].created_at||''});
-    wps.sort((a,b)=>{ const dd=new Date(a.date)-new Date(b.date); return dd!==0?dd:new Date(a.created_at)-new Date(b.created_at); });
+    wps.push({id:saved[0].id,place,lat,lon,date,note:note||'',photo:photoBase64||'',created_at:saved[0].created_at||'',sort_order:nextOrder});
+    wps.sort((a,b)=>{ const ao=a.sort_order??99999, bo=b.sort_order??99999; return ao!==bo?ao-bo:new Date(a.created_at)-new Date(b.created_at); });
     ['fp','fsearch','fn','femail'].forEach(id=>document.getElementById(id).value='');
     ['flat','flon'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('filled');});
     clearPhoto();
@@ -664,7 +665,7 @@ async function saveEdit() {
     });
     const idx = wps.findIndex(x => x.id === editingId);
     if(idx !== -1) { wps[idx].date = date; wps[idx].note = note || ''; }
-    wps.sort((a,b)=>{ const dd=new Date(a.date)-new Date(b.date); return dd!==0?dd:new Date(a.created_at)-new Date(b.created_at); });
+    wps.sort((a,b)=>{ const ao=a.sort_order??99999, bo=b.sort_order??99999; return ao!==bo?ao-bo:new Date(a.created_at)-new Date(b.created_at); });
     closeEditModal();
     updatePkgInfo(); renderMap(); renderPanel();
   } catch(e) { alert('Fehler beim Speichern: ' + e.message); }
