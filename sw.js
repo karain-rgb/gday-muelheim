@@ -1,4 +1,4 @@
-const CACHE = 'gday-muelheim-v1';
+const CACHE = 'gday-muelheim-v2';
 const PRECACHE = [
   '/',
   '/index.html',
