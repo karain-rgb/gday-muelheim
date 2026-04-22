@@ -251,6 +251,12 @@
 
     .hint-box { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15); border-radius: var(--radius-sm); padding: 11px 14px; font-size: 12px; color: #60a5fa; grid-column: 1 / -1; line-height: 1.7; }
 
+    /* INPUT MODE TOGGLE */
+    .input-mode-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 3px; gap: 3px; grid-column: 1 / -1; }
+    .imt-btn { font-family: 'Sora', sans-serif; flex: 1; padding: 8px; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--text3); transition: all 0.2s; letter-spacing: 0.01em; }
+    .imt-btn.active { background: var(--surface3); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+    .coord-field input:not([readonly]) { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+
     /* Email field */
     .email-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; grid-column: 1 / -1; }
     .email-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
@@ -357,22 +363,47 @@
     <div id="add-form" style="display:none;">
       <div class="form-section">
         <div class="form-row">
-          <div class="hint-box">💡 Screenshot aus „Wo ist?" an Claude schicken → Ortsnamen erhalten → hier suchen!</div>
-        </div>
-        <div class="form-row">
-          <div class="search-wrap">
-            <span class="search-icon">🔍</span>
-            <input id="fsearch" placeholder='Ort suchen, z.B. "Singapur" oder "Hafen Hamburg"' oninput="onSearch()" onkeydown="if(event.key==='Escape')closeSearch()"/>
-            <div class="search-results" id="searchResults"></div>
+          <div class="input-mode-toggle">
+            <button class="imt-btn active" id="imt-search" onclick="setInputMode('search')">🔍 Ort suchen</button>
+            <button class="imt-btn" id="imt-coords" onclick="setInputMode('coords')">🌐 Koordinaten</button>
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-field"><label>Ortsname</label><input id="fp" placeholder="Wird automatisch befüllt"/></div>
-          <div class="form-field"><label>Datum</label><input id="fd" type="date"/></div>
+
+        <!-- SEARCH MODE -->
+        <div id="mode-search">
+          <div class="form-row">
+            <div class="hint-box">💡 Screenshot aus „Wo ist?" an Claude schicken → Ortsnamen erhalten → hier suchen!</div>
+          </div>
+          <div class="form-row">
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input id="fsearch" placeholder='Ort suchen, z.B. "Singapur" oder "Hafen Hamburg"' oninput="onSearch()" onkeydown="if(event.key==='Escape')closeSearch()"/>
+              <div class="search-results" id="searchResults"></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>Ortsname</label><input id="fp" placeholder="Wird automatisch befüllt"/></div>
+            <div class="form-field"><label>Datum</label><input id="fd" type="date"/></div>
+          </div>
+          <div class="coords-row">
+            <div class="coord-field"><label>Breitengrad</label><input id="flat" type="number" step="0.001" readonly/></div>
+            <div class="coord-field"><label>Längengrad</label><input id="flon" type="number" step="0.001" readonly/></div>
+          </div>
         </div>
-        <div class="coords-row">
-          <div class="coord-field"><label>Breitengrad</label><input id="flat" type="number" step="0.001" readonly/></div>
-          <div class="coord-field"><label>Längengrad</label><input id="flon" type="number" step="0.001" readonly/></div>
+
+        <!-- COORDS MODE -->
+        <div id="mode-coords" style="display:none;">
+          <div class="form-row">
+            <div class="hint-box" style="background:rgba(34,197,94,0.06);border-color:rgba(34,197,94,0.15);color:#4ade80;">🌊 Für hohe See oder unbewohnte Gebiete – Koordinaten direkt aus „Wo ist?" eintragen.</div>
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>Ortsname</label><input id="fp-c" placeholder='z.B. "Indischer Ozean"'/></div>
+            <div class="form-field"><label>Datum</label><input id="fd-c" type="date"/></div>
+          </div>
+          <div class="coords-row">
+            <div class="coord-field"><label>Breitengrad</label><input id="flat-c" type="number" step="0.0001" placeholder="z.B. -12.3456"/></div>
+            <div class="coord-field"><label>Längengrad</label><input id="flon-c" type="number" step="0.0001" placeholder="z.B. 78.9012"/></div>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-field full"><label>Notiz</label><input id="fn" placeholder="z.B. Im Hafen gesehen, Weiterfahrt morgen"/></div>
@@ -609,14 +640,32 @@ function showTab(n){
   document.getElementById('sec-add').classList.toggle('active', n==='add');
 }
 
+let currentInputMode = 'search';
+
+function setInputMode(mode) {
+  currentInputMode = mode;
+  document.getElementById('mode-search').style.display = mode === 'search' ? 'block' : 'none';
+  document.getElementById('mode-coords').style.display = mode === 'coords' ? 'block' : 'none';
+  document.getElementById('imt-search').classList.toggle('active', mode === 'search');
+  document.getElementById('imt-coords').classList.toggle('active', mode === 'coords');
+  if(mode === 'coords') {
+    const today = new Date().toISOString().slice(0,10);
+    if(!document.getElementById('fd-c').value) document.getElementById('fd-c').value = today;
+  }
+}
+
 async function addWP(){
-  const place=document.getElementById('fp').value.trim();
-  const date=document.getElementById('fd').value;
-  const lat=parseFloat(document.getElementById('flat').value);
-  const lon=parseFloat(document.getElementById('flon').value);
+  const isCoords = currentInputMode === 'coords';
+  const place = isCoords ? document.getElementById('fp-c').value.trim() : document.getElementById('fp').value.trim();
+  const date  = isCoords ? document.getElementById('fd-c').value : document.getElementById('fd').value;
+  const lat   = isCoords ? parseFloat(document.getElementById('flat-c').value) : parseFloat(document.getElementById('flat').value);
+  const lon   = isCoords ? parseFloat(document.getElementById('flon-c').value) : parseFloat(document.getElementById('flon').value);
   const note=document.getElementById('fn').value.trim() || null;
   const email=document.getElementById('femail').value.trim();
-  if(!place||!date||isNaN(lat)||isNaN(lon)){alert('Bitte erst einen Ort suchen und auswählen.');return;}
+  if(!place||!date||isNaN(lat)||isNaN(lon)){
+    alert(isCoords ? 'Bitte Ortsname, Datum und Koordinaten ausfüllen.' : 'Bitte erst einen Ort suchen und auswählen.');
+    return;
+  }
   try{
     const nextOrder = wps.length > 0 ? Math.max(...wps.map(w => w.sort_order||0)) + 1 : 1;
     const payload={place,lat,lon,date,note,sort_order:nextOrder};
@@ -626,6 +675,7 @@ async function addWP(){
     wps.sort((a,b)=>{ const ao=a.sort_order??99999, bo=b.sort_order??99999; return ao!==bo?ao-bo:new Date(a.created_at)-new Date(b.created_at); });
     ['fp','fsearch','fn','femail'].forEach(id=>document.getElementById(id).value='');
     ['flat','flon'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('filled');});
+    ['fp-c','fd-c','flat-c','flon-c'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     clearPhoto();
     if(email){
       const subject=encodeURIComponent(`G'day Mülheim – Neuer Wegpunkt: ${place}`);
