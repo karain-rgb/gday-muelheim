@@ -232,8 +232,15 @@
     .coords-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .coord-field { display: flex; flex-direction: column; gap: 5px; }
     .coord-field label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
-    .coord-field input { font-family: 'Sora', sans-serif; width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text3); font-size: 12px; }
-    .coord-field input.filled { color: var(--blue); border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.05); }
+    .coord-field input { font-family: 'Sora', sans-serif; width: 100%; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text3); font-size: 12px; }
+    .coord-field input.filled, .coord-field input:not([readonly]) { color: var(--blue); border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.05); }
+
+    /* PIN CONFIRM BAR */
+    #pin-bar { display: none; position: sticky; top: 0; z-index: 2000; background: var(--surface); border-bottom: 1px solid var(--border2); padding: 10px 16px; gap: 10px; align-items: center; }
+    #pin-bar.open { display: flex; }
+    #pin-bar-hint { font-size: 12px; color: var(--text2); flex: 1; line-height: 1.4; }
+    #pin-bar-cancel { font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm); background: transparent; color: var(--text3); border: 1px solid var(--border2); cursor: pointer; }
+    #pin-bar-confirm { font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm); background: var(--accent); color: #fff; border: none; cursor: pointer; }
 
     /* Photo upload */
     .photo-upload-area {
@@ -255,7 +262,6 @@
     .input-mode-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 3px; gap: 3px; grid-column: 1 / -1; }
     .imt-btn { font-family: 'Sora', sans-serif; flex: 1; padding: 8px; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--text3); transition: all 0.2s; letter-spacing: 0.01em; }
     .imt-btn.active { background: var(--surface3); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-    .coord-field input:not([readonly]) { color: var(--text); border-color: var(--border2); background: var(--surface2); }
 
     /* Email field */
     .email-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; grid-column: 1 / -1; }
@@ -291,6 +297,13 @@
   </style>
 </head>
 <body>
+
+<!-- PIN CONFIRM BAR (sticky, shown when placing pin) -->
+<div id="pin-bar">
+  <div id="pin-bar-hint">📍 Nadel verschieben, dann bestätigen</div>
+  <button id="pin-bar-cancel" onclick="cancelPin()">Abbrechen</button>
+  <button id="pin-bar-confirm" onclick="confirmPin()">✓ Übernehmen</button>
+</div>
 
 <div id="hero">
   <div class="hero-top">
@@ -389,6 +402,9 @@
             <div class="coord-field"><label>Breitengrad</label><input id="flat" type="number" step="0.001" readonly/></div>
             <div class="coord-field"><label>Längengrad</label><input id="flon" type="number" step="0.001" readonly/></div>
           </div>
+          <div class="form-row" id="pin-btn-row" style="display:none;">
+            <button class="btn bs" style="grid-column:1/-1;font-size:12px;padding:8px 14px;" onclick="startPin('search')">📍 Position auf Karte präzisieren</button>
+          </div>
         </div>
 
         <!-- COORDS MODE -->
@@ -401,8 +417,11 @@
             <div class="form-field"><label>Datum</label><input id="fd-c" type="date"/></div>
           </div>
           <div class="coords-row">
-            <div class="coord-field"><label>Breitengrad</label><input id="flat-c" type="number" step="0.0001" placeholder="z.B. -12.3456"/></div>
-            <div class="coord-field"><label>Längengrad</label><input id="flon-c" type="number" step="0.0001" placeholder="z.B. 78.9012"/></div>
+            <div class="coord-field"><label>Breitengrad</label><input id="flat-c" type="number" step="0.0001" placeholder="z.B. -12.3456" oninput="onCoordsInput()"/></div>
+            <div class="coord-field"><label>Längengrad</label><input id="flon-c" type="number" step="0.0001" placeholder="z.B. 78.9012" oninput="onCoordsInput()"/></div>
+          </div>
+          <div class="form-row" id="pin-btn-row-c" style="display:none;">
+            <button class="btn bs" style="grid-column:1/-1;font-size:12px;padding:8px 14px;" onclick="startPin('coords')">📍 Position auf Karte präzisieren</button>
           </div>
         </div>
         <div class="form-row">
@@ -461,10 +480,16 @@ const MAPBOX_TOKEN = 'pk.eyJ1IjoiamFub3BwIiwiYSI6ImNtbnlndGJ3MTAxdGEycW44OXFwc3c
 
 let wps = [], map, tileLayer, routeLine, markers = [];
 let searchTimer = null, authenticated = false, currentStyle = 'satellite-streets-v12';
-let photoBase64 = null;
-const isAdmin = new URLSearchParams(window.location.search).get('admin') === '1';
+let photoBase64 = null, pinMarker = null, pinMode = null;
 
+function sortWps() {
+  wps.sort((a,b) => {
+    const ao = a.sort_order ?? 99999, bo = b.sort_order ?? 99999;
+    return ao !== bo ? ao - bo : new Date(a.created_at) - new Date(b.created_at);
+  });
+}
 // Show/hide admin tab
+const isAdmin = new URLSearchParams(window.location.search).get('admin') === '1';
 if(!isAdmin) document.getElementById('tab-add').style.display = 'none';
 
 // Map init
@@ -484,7 +509,9 @@ function setStyle(style, btn) {
 
 // Supabase
 async function sbFetch(path, opts={}) {
-  const res = await fetch(SB_URL + path, { ...opts, headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': opts.prefer||'', ...(opts.headers||{}) }});
+  const headers = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
+  if(opts.prefer) headers['Prefer'] = opts.prefer;
+  const res = await fetch(SB_URL + path, { method: opts.method||'GET', body: opts.body, headers });
   if(!res.ok) throw new Error(await res.text());
   const text = await res.text();
   return text ? JSON.parse(text) : null;
@@ -629,7 +656,83 @@ function lockForm(){
 function onSearch(){ clearTimeout(searchTimer); const q=document.getElementById('fsearch').value.trim(); if(q.length<2){closeSearch();return;} searchTimer=setTimeout(()=>doSearch(q),400); }
 async function doSearch(q){ try{ const res=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`,{headers:{'Accept-Language':'de'}}); showResults(await res.json()); }catch(e){closeSearch();} }
 function showResults(data){ const el=document.getElementById('searchResults'); if(!data.length){el.style.display='none';return;} el.innerHTML=data.map((r,i)=>`<div class="search-result" onclick="selectResult(${i})"><div class="sr-name">${r.name||r.display_name.split(',')[0]}</div><div class="sr-detail">${r.display_name}</div></div>`).join(''); el.style.display='block'; el._data=data; }
-function selectResult(i){ const r=document.getElementById('searchResults')._data[i]; const name=r.name||r.display_name.split(',')[0]; document.getElementById('fp').value=name; document.getElementById('fsearch').value=name; document.getElementById('flat').value=parseFloat(r.lat).toFixed(4); document.getElementById('flon').value=parseFloat(r.lon).toFixed(4); document.getElementById('flat').classList.add('filled'); document.getElementById('flon').classList.add('filled'); closeSearch(); }
+function selectResult(i){
+  const r=document.getElementById('searchResults')._data[i];
+  const name=r.name||r.display_name.split(',')[0];
+  document.getElementById('fp').value=name;
+  document.getElementById('fsearch').value=name;
+  document.getElementById('flat').value=parseFloat(r.lat).toFixed(4);
+  document.getElementById('flon').value=parseFloat(r.lon).toFixed(4);
+  document.getElementById('flat').classList.add('filled');
+  document.getElementById('flon').classList.add('filled');
+  document.getElementById('pin-btn-row').style.display='block';
+  closeSearch();
+}
+
+function onCoordsInput() {
+  const lat = document.getElementById('flat-c').value;
+  const lon = document.getElementById('flon-c').value;
+  document.getElementById('pin-btn-row-c').style.display = (lat && lon) ? 'block' : 'none';
+}
+
+function startPin(mode) {
+  pinMode = mode;
+  const lat = mode === 'coords'
+    ? parseFloat(document.getElementById('flat-c').value)
+    : parseFloat(document.getElementById('flat').value);
+  const lon = mode === 'coords'
+    ? parseFloat(document.getElementById('flon-c').value)
+    : parseFloat(document.getElementById('flon').value);
+
+  if(isNaN(lat)||isNaN(lon)) { alert('Bitte erst gültige Koordinaten eingeben.'); return; }
+
+  // Scroll to map
+  document.getElementById('mapwrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Remove old pin marker if any
+  if(pinMarker) { map.removeLayer(pinMarker); pinMarker = null; }
+
+  const pinIcon = L.divIcon({
+    className: '',
+    html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:var(--accent);border:3px solid #fff;transform:rotate(-45deg);box-shadow:0 2px 12px rgba(0,0,0,0.5);cursor:grab;"></div>',
+    iconSize: [28, 28], iconAnchor: [14, 28]
+  });
+
+  pinMarker = L.marker([lat, lon], { icon: pinIcon, draggable: true, zIndexOffset: 1000 }).addTo(map);
+  map.setView([lat, lon], Math.max(map.getZoom(), 8));
+  document.getElementById('pin-bar').classList.add('open');
+}
+
+function confirmPin() {
+  if(!pinMarker) return;
+  const pos = pinMarker.getLatLng();
+  const latStr = pos.lat.toFixed(5);
+  const lonStr = pos.lng.toFixed(5);
+
+  if(pinMode === 'coords') {
+    document.getElementById('flat-c').value = latStr;
+    document.getElementById('flon-c').value = lonStr;
+  } else {
+    document.getElementById('flat').value = latStr;
+    document.getElementById('flon').value = lonStr;
+    document.getElementById('flat').classList.add('filled');
+    document.getElementById('flon').classList.add('filled');
+  }
+
+  map.removeLayer(pinMarker);
+  pinMarker = null; pinMode = null;
+  document.getElementById('pin-bar').classList.remove('open');
+
+  // Scroll back to form
+  document.getElementById('panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelPin() {
+  if(pinMarker) { map.removeLayer(pinMarker); pinMarker = null; }
+  pinMode = null;
+  document.getElementById('pin-bar').classList.remove('open');
+  document.getElementById('panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 function closeSearch(){ document.getElementById('searchResults').style.display='none'; }
 document.addEventListener('click',e=>{ if(!e.target.closest('.search-wrap'))closeSearch(); });
 
@@ -672,10 +775,14 @@ async function addWP(){
     if(photoBase64) payload.photo=photoBase64;
     const saved=await sbFetch('/rest/v1/waypoints',{method:'POST',prefer:'return=representation',body:JSON.stringify(payload)});
     wps.push({id:saved[0].id,place,lat,lon,date,note:note||'',photo:photoBase64||'',created_at:saved[0].created_at||'',sort_order:nextOrder});
-    wps.sort((a,b)=>{ const ao=a.sort_order??99999, bo=b.sort_order??99999; return ao!==bo?ao-bo:new Date(a.created_at)-new Date(b.created_at); });
+    sortWps();
     ['fp','fsearch','fn','femail'].forEach(id=>document.getElementById(id).value='');
     ['flat','flon'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('filled');});
     ['fp-c','fd-c','flat-c','flon-c'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('pin-btn-row').style.display='none';
+    document.getElementById('pin-btn-row-c').style.display='none';
+    if(pinMarker){map.removeLayer(pinMarker);pinMarker=null;}
+    document.getElementById('pin-bar').classList.remove('open');
     clearPhoto();
     if(email){
       const subject=encodeURIComponent(`G'day Mülheim – Neuer Wegpunkt: ${place}`);
@@ -715,7 +822,7 @@ async function saveEdit() {
     });
     const idx = wps.findIndex(x => x.id === editingId);
     if(idx !== -1) { wps[idx].date = date; wps[idx].note = note || ''; }
-    wps.sort((a,b)=>{ const ao=a.sort_order??99999, bo=b.sort_order??99999; return ao!==bo?ao-bo:new Date(a.created_at)-new Date(b.created_at); });
+    sortWps();
     closeEditModal();
     updatePkgInfo(); renderMap(); renderPanel();
   } catch(e) { alert('Fehler beim Speichern: ' + e.message); }
